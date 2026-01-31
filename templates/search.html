@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="page-title">Búsqueda Avanzada</h1>
+<div class="card">
+  <form id="form-busqueda">
+    <div class="form-grid">
+      <div class="form-group full-width">
+        <label for="texto">Texto</label>
+        <input type="text" id="texto" name="texto" placeholder="Buscar en título o descripción">
+      </div>
+      <div class="form-group">
+        <label for="estado">Estado</label>
+        <select id="estado" name="estado">
+          <option value="Todos">Todos</option>
+          <option value="Pendiente">Pendiente</option>
+          <option value="En progreso">En progreso</option>
+          <option value="Completada">Completada</option>
+          <option value="Cancelada">Cancelada</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="prioridad">Prioridad</label>
+        <select id="prioridad" name="prioridad">
+          <option value="Todas">Todas</option>
+          <option value="Baja">Baja</option>
+          <option value="Media">Media</option>
+          <option value="Alta">Alta</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="proyecto">Proyecto</label>
+        <select id="proyecto" name="proyecto_id">
+          <option value="Todos">Todos</option>
+        </select>
+      </div>
+      <div class="form-group full-width">
+        <button type="submit" class="btn btn-primary">🔍 Buscar</button>
+      </div>
+    </div>
+  </form>
+</div>
+<div class="card">
+  <h2 class="card-title">Resultados (<span id="resultados-count">0</span>)</h2>
+  <div id="resultados-area">
+    <p class="empty-state">No se encontraron resultados. Intenta con otros filtros.</p>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function() {
+  const form = document.getElementById('form-busqueda');
+  const area = document.getElementById('resultados-area');
+  const countEl = document.getElementById('resultados-count');
+
+  function escapeHtml(s) {
+    const div = document.createElement('div');
+    div.textContent = s || '';
+    return div.innerHTML;
+  }
+
+  function loadProyectosOpciones() {
+    fetch('/api/opciones/proyectos').then(r => r.json()).then(proyectos => {
+      const sel = document.getElementById('proyecto');
+      sel.innerHTML = '<option value="Todos">Todos</option>' + proyectos.map(p => `<option value="${p._id}">${escapeHtml(p.nombre)}</option>`).join('');
+    }).catch(console.error);
+  }
+
+  function renderResultados(tareas) {
+    countEl.textContent = tareas.length;
+    if (!tareas.length) {
+      area.innerHTML = '<p class="empty-state">No se encontraron resultados. Intenta con otros filtros.</p>';
+      return;
+    }
+    area.innerHTML = '<div class="table-wrap"><table><thead><tr><th>ID</th><th>TÍTULO</th><th>ESTADO</th><th>PRIORIDAD</th><th>VENCIMIENTO</th></tr></thead><tbody>' +
+      tareas.map(t => `
+        <tr>
+          <td>${t._id.slice(-6)}</td>
+          <td>${escapeHtml(t.titulo || '')}</td>
+          <td>${escapeHtml(t.estado || '')}</td>
+          <td>${escapeHtml(t.prioridad || '')}</td>
+          <td>${t.fecha_vencimiento || '-'}</td>
+        </tr>
+      `).join('') + '</tbody></table></div>';
+  }
+
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const params = new URLSearchParams({
+      texto: document.getElementById('texto').value,
+      estado: document.getElementById('estado').value,
+      prioridad: document.getElementById('prioridad').value,
+      proyecto_id: document.getElementById('proyecto').value
+    });
+    fetch('/api/busqueda?' + params)
+      .then(r => r.json())
+      .then(renderResultados)
+      .catch(() => {
+        countEl.textContent = '0';
+        area.innerHTML = '<p class="empty-state">Error al buscar</p>';
+      });
+  });
+
+  loadProyectosOpciones();
+})();
+</script>
+{% endblock %}

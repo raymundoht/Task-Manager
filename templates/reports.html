@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="page-title">Generación de Reportes</h1>
+<div class="card">
+  <h2 class="card-title">Generación de Reportes</h2>
+  <div class="reports-grid">
+    <button type="button" class="report-btn" id="reporte-tareas">📄 Reporte de Tareas</button>
+    <button type="button" class="report-btn" id="reporte-proyectos">📄 Reporte de Proyectos</button>
+    <button type="button" class="report-btn" id="reporte-usuarios">📄 Reporte de Usuarios</button>
+  </div>
+</div>
+<div class="card">
+  <h2 class="card-title">Exportar a CSV</h2>
+  <div class="export-grid">
+    <a href="/api/export/tareas/csv" class="export-btn" download>⬇ Exportar Tareas</a>
+    <a href="/api/export/proyectos/csv" class="export-btn" download>⬇ Exportar Proyectos</a>
+    <a href="/api/export/usuarios/csv" class="export-btn" download>⬇ Exportar Usuarios</a>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function() {
+  function showReport(url, title) {
+    fetch(url).then(r => r.json()).then(data => {
+      const win = window.open('', '_blank');
+      win.document.write('<html><head><title>' + title + '</title><style>body{font-family:sans-serif;padding:1rem;background:#1a1a2e;color:#fff;} pre{white-space:pre-wrap;}</style></head><body><h1>' + title + '</h1><pre>' + JSON.stringify(data, null, 2) + '</pre></body></html>');
+      win.document.close();
+    }).catch(console.error);
+  }
+  document.getElementById('reporte-tareas').addEventListener('click', () => showReport('/api/reportes/tareas', 'Reporte de Tareas'));
+  document.getElementById('reporte-proyectos').addEventListener('click', () => showReport('/api/reportes/proyectos', 'Reporte de Proyectos'));
+  document.getElementById('reporte-usuarios').addEventListener('click', () => showReport('/api/reportes/usuarios', 'Reporte de Usuarios'));
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Manager</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="header">
+    <a href="{{ url_for('index') }}" class="app-title">Task Manager</a>
+    <div class="user-info">
+      <span>Usuario: admin</span>
+      <a href="#" class="btn-salir" aria-label="Salir">→ Salir</a>
+    </div>
+  </header>
+  <nav class="nav">
+    <a href="{{ url_for('tasks') }}" class="{{ 'activo' if activo == 'tareas' else '' }}">Tareas</a>
+    <a href="{{ url_for('projects') }}" class="{{ 'activo' if activo == 'proyectos' else '' }}">Proyectos</a>
+    <a href="{{ url_for('comments') }}" class="{{ 'activo' if activo == 'comentarios' else '' }}">Comentarios</a>
+    <a href="{{ url_for('history') }}" class="{{ 'activo' if activo == 'historial' else '' }}">Historial</a>
+    <a href="{{ url_for('notifications') }}" class="{{ 'activo' if activo == 'notificaciones' else '' }}">Notificaciones</a>
+    <a href="{{ url_for('search') }}" class="{{ 'activo' if activo == 'busqueda' else '' }}">Búsqueda</a>
+    <a href="{{ url_for('reports') }}" class="{{ 'activo' if activo == 'reportes' else '' }}">Reportes</a>
+  </nav>
+  <main class="main">
+    {% block content %}{% endblock %}
+  </main>
+  <script>
+    const API_BASE = '';
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

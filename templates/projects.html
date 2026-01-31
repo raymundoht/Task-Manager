@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="page-title">Gestión de Proyectos</h1>
+<div class="card">
+  <form id="form-proyecto">
+    <div class="form-group">
+      <label for="nombre">Nombre</label>
+      <input type="text" id="nombre" name="nombre" placeholder="Nombre del proyecto" required>
+    </div>
+    <div class="form-group">
+      <label for="descripcion">Descripción</label>
+      <textarea id="descripcion" name="descripcion" placeholder="Descripción del proyecto"></textarea>
+    </div>
+    <div class="form-group mt-1">
+      <button type="submit" class="btn btn-primary">+ Agregar</button>
+    </div>
+  </form>
+</div>
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>NOMBRE</th>
+          <th>DESCRIPCIÓN</th>
+          <th>ACCIONES</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-proyectos">
+        <tr><td colspan="4" class="empty-state">No hay proyectos registrados</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function() {
+  const tbody = document.getElementById('tbody-proyectos');
+  const form = document.getElementById('form-proyecto');
+
+  function escapeHtml(s) {
+    const div = document.createElement('div');
+    div.textContent = s || '';
+    return div.innerHTML;
+  }
+
+  function loadProyectos() {
+    fetch('/api/proyectos').then(r => r.json()).then(proyectos => {
+      if (!proyectos.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No hay proyectos registrados</td></tr>';
+        return;
+      }
+      tbody.innerHTML = proyectos.map(p => `
+        <tr>
+          <td>${p._id.slice(-6)}</td>
+          <td>${escapeHtml(p.nombre)}</td>
+          <td>${escapeHtml(p.descripcion)}</td>
+          <td>
+            <button class="btn btn-secondary btn-sm" onclick="editarProyecto('${p._id}')">Editar</button>
+            <button class="btn btn-danger btn-sm" onclick="eliminarProyecto('${p._id}')">Eliminar</button>
+          </td>
+        </tr>
+      `).join('');
+    }).catch(console.error);
+  }
+
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const editId = form.dataset.editId;
+    const data = {
+      nombre: document.getElementById('nombre').value,
+      descripcion: document.getElementById('descripcion').value
+    };
+    const url = editId ? '/api/proyectos/' + editId : '/api/proyectos';
+    const method = editId ? 'PUT' : 'POST';
+    fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(r => r.json()).then(() => {
+      form.reset();
+      delete form.dataset.editId;
+      loadProyectos();
+    }).catch(console.error);
+  });
+
+  window.editarProyecto = function(id) {
+    fetch('/api/proyectos').then(r => r.json()).then(proyectos => {
+      const p = proyectos.find(x => x._id === id);
+      if (!p) return;
+      document.getElementById('nombre').value = p.nombre || '';
+      document.getElementById('descripcion').value = p.descripcion || '';
+      form.dataset.editId = id;
+    });
+  };
+
+  window.eliminarProyecto = function(id) {
+    if (!confirm('¿Eliminar este proyecto?')) return;
+    fetch('/api/proyectos/' + id, { method: 'DELETE' }).then(() => loadProyectos()).catch(console.error);
+  };
+
+  loadProyectos();
+})();
+</script>
+{% endblock %}

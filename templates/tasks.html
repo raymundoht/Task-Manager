@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="page-title">Gestión de Tareas</h1>
+<div class="card">
+  <form id="form-tarea" class="form-grid">
+    <div class="form-group full-width">
+      <label for="titulo">Título</label>
+      <input type="text" id="titulo" name="titulo" placeholder="Título de la tarea" required>
+    </div>
+    <div class="form-group full-width">
+      <label for="descripcion">Descripción</label>
+      <textarea id="descripcion" name="descripcion" placeholder="Descripción"></textarea>
+    </div>
+    <div class="form-group">
+      <label for="estado">Estado</label>
+      <select id="estado" name="estado">
+        <option value="Pendiente">Pendiente</option>
+        <option value="En progreso">En progreso</option>
+        <option value="Completada">Completada</option>
+        <option value="Cancelada">Cancelada</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="prioridad">Prioridad</label>
+      <select id="prioridad" name="prioridad">
+        <option value="Baja">Baja</option>
+        <option value="Media">Media</option>
+        <option value="Alta">Alta</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="proyecto">Proyecto</label>
+      <select id="proyecto" name="proyecto_id">
+        <option value="">Sin proyecto</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="asignado">Asignado a</label>
+      <select id="asignado" name="asignado_id">
+        <option value="">Sin asignar</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="fecha_vencimiento">Fecha Vencimiento</label>
+      <input type="date" id="fecha_vencimiento" name="fecha_vencimiento">
+    </div>
+    <div class="form-group">
+      <label for="horas_estimadas">Horas Estimadas</label>
+      <input type="text" id="horas_estimadas" name="horas_estimadas" placeholder="0">
+    </div>
+    <div class="form-group full-width">
+      <button type="submit" class="btn btn-primary">+ Agregar</button>
+    </div>
+  </form>
+</div>
+<div class="stats-bar" id="stats-bar">
+  Estadísticas: Total: <strong id="stat-total">0</strong> | Completadas: <strong id="stat-completadas">0</strong> | Pendientes: <strong id="stat-pendientes">0</strong> | Alta Prioridad: <strong id="stat-alta">0</strong> | Vencidas: <strong id="stat-vencidas">0</strong>
+</div>
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>TÍTULO</th>
+          <th>ESTADO</th>
+          <th>PRIORIDAD</th>
+          <th>PROYECTO</th>
+          <th>ASIGNADO</th>
+          <th>VENCIMIENTO</th>
+          <th>ACCIONES</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-tareas">
+        <tr><td colspan="8" class="empty-state">No hay tareas registradas</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function() {
+  const tbody = document.getElementById('tbody-tareas');
+  const form = document.getElementById('form-tarea');
+
+  function renderTareas(tareas) {
+    if (!tareas.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No hay tareas registradas</td></tr>';
+      return;
+    }
+    const proyectos = window._proyectos || [];
+    const usuarios = window._usuarios || [];
+    const getProyecto = id => proyectos.find(p => p._id === id)?.nombre || '-';
+    const getUsuario = id => usuarios.find(u => u._id === id)?.nombre || '-';
+    tbody.innerHTML = tareas.map(t => `
+      <tr>
+        <td>${t._id.slice(-6)}</td>
+        <td>${escapeHtml(t.titulo || '')}</td>
+        <td>${escapeHtml(t.estado || '')}</td>
+        <td>${escapeHtml(t.prioridad || '')}</td>
+        <td>${getProyecto(t.proyecto_id)}</td>
+        <td>${getUsuario(t.asignado_id)}</td>
+        <td>${t.fecha_vencimiento || '-'}</td>
+        <td>
+          <button class="btn btn-secondary btn-sm" onclick="editarTarea('${t._id}')">Editar</button>
+          <button class="btn btn-danger btn-sm" onclick="eliminarTarea('${t._id}')">Eliminar</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function escapeHtml(s) {
+    const div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
+  }
+
+  function loadTareas() {
+    fetch('/api/tareas').then(r => r.json()).then(tareas => {
+      window._tareasCache = tareas;
+      renderTareas(tareas);
+    }).catch(console.error);
+  }
+
+  function loadStats() {
+    fetch('/api/tareas/estadisticas').then(r => r.json()).then(s => {
+      document.getElementById('stat-total').textContent = s.total;
+      document.getElementById('stat-completadas').textContent = s.completadas;
+      document.getElementById('stat-pendientes').textContent = s.pendientes;
+      document.getElementById('stat-alta').textContent = s.alta_prioridad;
+      document.getElementById('stat-vencidas').textContent = s.vencidas;
+    }).catch(console.error);
+  }
+
+  function loadOpciones() {
+    Promise.all([
+      fetch('/api/opciones/proyectos').then(r => r.json()),
+      fetch('/api/opciones/usuarios').then(r => r.json())
+    ]).then(([proyectos, usuarios]) => {
+      window._proyectos = proyectos;
+      window._usuarios = usuarios;
+      const selProyecto = document.getElementById('proyecto');
+      const selAsignado = document.getElementById('asignado');
+      selProyecto.innerHTML = '<option value="">Sin proyecto</option>' + proyectos.map(p => `<option value="${p._id}">${escapeHtml(p.nombre)}</option>`).join('');
+      selAsignado.innerHTML = '<option value="">Sin asignar</option>' + usuarios.map(u => `<option value="${u._id}">${escapeHtml(u.nombre)}</option>`).join('');
+    }).catch(console.error);
+  }
+
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const editId = form.dataset.editId;
+    const data = {
+      titulo: document.getElementById('titulo').value,
+      descripcion: document.getElementById('descripcion').value,
+      estado: document.getElementById('estado').value,
+      prioridad: document.getElementById('prioridad').value,
+      proyecto_id: document.getElementById('proyecto').value || null,
+      asignado_id: document.getElementById('asignado').value || null,
+      fecha_vencimiento: document.getElementById('fecha_vencimiento').value || null,
+      horas_estimadas: document.getElementById('horas_estimadas').value
+    };
+    const url = editId ? '/api/tareas/' + editId : '/api/tareas';
+    const method = editId ? 'PUT' : 'POST';
+    fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(r => r.json()).then(() => {
+      form.reset();
+      delete form.dataset.editId;
+      loadTareas();
+      loadStats();
+    }).catch(console.error);
+  });
+
+  window.editarTarea = function(id) {
+    const t = window._tareasCache && window._tareasCache.find(x => x._id === id);
+    if (!t) return;
+    document.getElementById('titulo').value = t.titulo || '';
+    document.getElementById('descripcion').value = t.descripcion || '';
+    document.getElementById('estado').value = t.estado || 'Pendiente';
+    document.getElementById('prioridad').value = t.prioridad || 'Baja';
+    document.getElementById('proyecto').value = t.proyecto_id || '';
+    document.getElementById('asignado').value = t.asignado_id || '';
+    document.getElementById('fecha_vencimiento').value = t.fecha_vencimiento ? t.fecha_vencimiento.split('/').reverse().join('-') : '';
+    document.getElementById('horas_estimadas').value = t.horas_estimadas || '';
+    document.getElementById('form-tarea').dataset.editId = id;
+  };
+
+  window.eliminarTarea = function(id) {
+    if (!confirm('¿Eliminar esta tarea?')) return;
+    fetch('/api/tareas/' + id, { method: 'DELETE' }).then(() => {
+      loadTareas();
+      loadStats();
+    }).catch(console.error);
+  };
+
+  fetch('/api/tareas').then(r => r.json()).then(tareas => {
+    window._tareasCache = tareas;
+    renderTareas(tareas);
+  }).catch(console.error);
+  loadStats();
+  loadOpciones();
+})();
+</script>
+{% endblock %}

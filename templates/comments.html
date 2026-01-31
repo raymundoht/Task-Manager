@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="page-title">Comentarios de Tareas</h1>
+<div class="two-cols">
+  <div class="card">
+    <h2 class="card-title">Agregar Comentario</h2>
+    <form id="form-comentario">
+      <div class="form-group">
+        <label for="task_id">ID Tarea</label>
+        <input type="text" id="task_id" name="task_id" placeholder="Ingresa el ID de la tarea">
+      </div>
+      <div class="form-group">
+        <label for="comentario">Comentario</label>
+        <textarea id="comentario" name="comentario" placeholder="Escribe tu comentario aquí..."></textarea>
+      </div>
+      <div class="form-group mt-1">
+        <button type="submit" class="btn btn-primary">✈ Agregar Comentario</button>
+        <button type="button" class="btn btn-secondary" id="btn-cargar">📄 Cargar Comentarios</button>
+      </div>
+    </form>
+  </div>
+  <div class="card">
+    <h2 class="card-title">Comentarios</h2>
+    <div id="comentarios-area">
+      <p class="empty-state">Ingresa un ID de tarea para ver comentarios</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function() {
+  const form = document.getElementById('form-comentario');
+  const area = document.getElementById('comentarios-area');
+  const btnCargar = document.getElementById('btn-cargar');
+
+  function escapeHtml(s) {
+    const div = document.createElement('div');
+    div.textContent = s || '';
+    return div.innerHTML;
+  }
+
+  function renderComentarios(comentarios) {
+    if (!comentarios || !comentarios.length) {
+      area.innerHTML = '<p class="empty-state">No hay comentarios para esta tarea</p>';
+      return;
+    }
+    area.innerHTML = '<ul class="comments-list">' + comentarios.map(c => `
+      <li>
+        <strong>${escapeHtml(c.created_at || '')}</strong><br>
+        ${escapeHtml(c.comentario || '')}
+      </li>
+    `).join('') + '</ul>';
+  }
+
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const taskId = document.getElementById('task_id').value.trim();
+    const comentario = document.getElementById('comentario').value.trim();
+    if (!taskId) {
+      alert('Ingresa el ID de la tarea');
+      return;
+    }
+    if (!comentario) {
+      alert('Escribe un comentario');
+      return;
+    }
+    fetch('/api/comentarios', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task_id: taskId, comentario })
+    }).then(r => r.json()).then(() => {
+      document.getElementById('comentario').value = '';
+      loadComentarios(taskId);
+    }).catch(console.error);
+  });
+
+  function loadComentarios(taskId) {
+    if (!taskId) {
+      area.innerHTML = '<p class="empty-state">Ingresa un ID de tarea para ver comentarios</p>';
+      return;
+    }
+    fetch('/api/comentarios/tarea/' + encodeURIComponent(taskId))
+      .then(r => r.json())
+      .then(renderComentarios)
+      .catch(() => {
+        area.innerHTML = '<p class="empty-state">Error al cargar comentarios</p>';
+      });
+  }
+
+  btnCargar.addEventListener('click', function() {
+    const taskId = document.getElementById('task_id').value.trim();
+    loadComentarios(taskId);
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="page-title">Historial de Cambios</h1>
+<div class="card">
+  <div class="form-group">
+    <label for="task_id">ID Tarea</label>
+    <div class="search-row" style="align-items: center;">
+      <input type="text" id="task_id" name="task_id" placeholder="Ingresa el ID de la tarea" style="flex: 1; min-width: 200px;">
+      <button type="button" class="btn btn-primary" id="btn-cargar">🕐 Cargar Historial</button>
+      <button type="button" class="btn btn-secondary" id="btn-cargar-todo">🔄 Cargar Todo el Historial</button>
+    </div>
+  </div>
+</div>
+<div class="card">
+  <div id="historial-area">
+    <p class="empty-state">No hay historial disponible. Carga el historial de una tarea o todo el historial.</p>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function() {
+  const area = document.getElementById('historial-area');
+  const btnCargar = document.getElementById('btn-cargar');
+  const btnCargarTodo = document.getElementById('btn-cargar-todo');
+
+  function escapeHtml(s) {
+    const div = document.createElement('div');
+    div.textContent = s || '';
+    return div.innerHTML;
+  }
+
+  function renderHistorial(items) {
+    if (!items || !items.length) {
+      area.innerHTML = '<p class="empty-state">No hay historial disponible. Carga el historial de una tarea o todo el historial.</p>';
+      return;
+    }
+    area.innerHTML = '<ul class="history-list">' + items.map(h => `
+      <li>
+        <strong>Tarea ${escapeHtml(h.task_id)}</strong> — ${escapeHtml(h.action)} (${escapeHtml(h.created_at || '')})
+        ${h.details && Object.keys(h.details).length ? '<br><small>' + JSON.stringify(h.details) + '</small>' : ''}
+      </li>
+    `).join('') + '</ul>';
+  }
+
+  btnCargar.addEventListener('click', function() {
+    const taskId = document.getElementById('task_id').value.trim();
+    if (!taskId) {
+      area.innerHTML = '<p class="empty-state">Ingresa el ID de la tarea para cargar su historial.</p>';
+      return;
+    }
+    fetch('/api/historial?task_id=' + encodeURIComponent(taskId))
+      .then(r => r.json())
+      .then(renderHistorial)
+      .catch(() => {
+        area.innerHTML = '<p class="empty-state">Error al cargar historial</p>';
+      });
+  });
+
+  btnCargarTodo.addEventListener('click', function() {
+    fetch('/api/historial')
+      .then(r => r.json())
+      .then(renderHistorial)
+      .catch(() => {
+        area.innerHTML = '<p class="empty-state">Error al cargar historial</p>';
+      });
+  });
+})();
+</script>
+{% endblock %}
